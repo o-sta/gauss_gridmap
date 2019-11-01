@@ -2,6 +2,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Pose.h>
 #include <dynamic_reconfigure/server.h>
+// #include <exdata/mapGeneraterConfig.h>
 #include <exdata/mapGeneraterConfig.h>
 #include <Eigen/Dense>
 #define PI 3.14159265358979323846
@@ -13,6 +14,7 @@ Eigen::VectorXd gx = Eigen::VectorXd::Zero(2);
 Eigen::VectorXd gmean = Eigen::VectorXd::Ones(2);
 Eigen::MatrixXd gcovariance = Eigen::MatrixXd::Ones(2,2);
 nav_msgs::OccupancyGrid og;
+std::vector<float> colorMap;
 
 int main (int argc, char** argv)
 {
@@ -38,6 +40,8 @@ int main (int argc, char** argv)
     dynamic_reconfigure::Server<exdata::mapGeneraterConfig>::CallbackType fc;
     fc = boost::bind(&callback, _1, _2);
 	server.setCallback(fc);
+    nh.param("colorMap/data", colorMap, colorMap);
+    colorMap.resize(colorMap.size() - (colorMap.size() % 3)); //要素数が3の倍数(RGB)になるようにリサイズ
     
     for(int row = 0; row < og.info.height; ++row){
         for(int col = 0; col < og.info.width; ++col){
@@ -61,19 +65,12 @@ double gauss_fcn(const Eigen::VectorXd& x, const Eigen::VectorXd& mean, const Ei
     // ROS_INFO_STREAM("gauss_fcn " << x(0) << " " << x(1) << " " << mean(0) << " " << mean(1) << " " << covariance(0,0) << " " << covariance(0,1) << " " << covariance(1,0) << " " << covariance(1,1) );
     double result, index, scalar, matrix_scalar, matrix_double;
     Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(1,1);
-    // ROS_INFO_STREAM("gauss_fcn2");
     index = (double)(x.rows());
-    // ROS_INFO_STREAM("gauss_fcn3" << index);
     scalar = 1.0 / (std::pow(std::sqrt(2.0*PI), index) * covariance.determinant());
-    // ROS_INFO_STREAM("gauss_fcn4" << scalar);
     matrix = (x-mean).transpose()*covariance.inverse()*(x-mean);
-    // ROS_INFO_STREAM("gauss_fcn5");
     matrix_scalar = matrix(0,0);
-    // ROS_INFO_STREAM("gauss_fcn6" << matrix_scalar);
     matrix_double = std::exp( -1.0 / 2.0*matrix_scalar);
-    // ROS_INFO_STREAM("gauss_fcn7");
     result = scalar*matrix_double;
-    // ROS_INFO_STREAM("gauss_fcn8" << result);
     return result;
 }
 
@@ -107,4 +104,9 @@ void callback(exdata::mapGeneraterConfig &config, uint32_t level){
         }
     }
     // ROS_INFO_STREAM("config_callback4");
+}
+
+int serectColor(float value, float minValue, float maxValue, int palletSize){
+    float range = (maxValue - minValue)/palletSize;
+    return (int)((value - minValue)/range);
 }
