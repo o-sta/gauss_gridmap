@@ -1,0 +1,7 @@
+<launch>
+    <!-- <machine name="jet" address="tegra-ubuntu.local" env-loader="/home/nvidia/catkin_ws/devel/env.sh" user="nvidia"/> -->
+    <machine name="sta" address="ros-HP-ProDesk-600-G2-SFF.local" env-loader="/opt/ros/kinetic/env.sh" user="ros" />
+    <node machine="sta" pkg="exdata" type="mapgen" name="mapgen" output="screen">
+        <rosparam file="$(find exdata)/config/colorMap.yaml" command="load" />
+    </node>
+</launch>

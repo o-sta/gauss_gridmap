@@ -18,6 +18,9 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
 )
 
+# find_package(OpenCV REQUIRED)
+#find_package(pcl_ros REQUIRED)
+find_package(PCL REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -124,6 +127,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 
 add_executable(exdata_voxel src/example.cpp)
