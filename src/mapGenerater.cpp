@@ -69,32 +69,37 @@ int main (int argc, char** argv)
     }
 
     //pointcloudでやる場合
-    int colorIndex;
-    int ptIndex;
-    for(int row = 0; row < og.info.height; ++row){
-        for(int col = 0; col < og.info.width; ++col){
-            gx(0) = (double)(row - (int)(og.info.height/2))*og.info.resolution + og.info.resolution/2;
-            gx(1) = (double)(col - (int)(og.info.width/2))*og.info.resolution + og.info.resolution/2;
-            ptIndex = row*og.info.height + col;
-            cloud.points[ptIndex].x = gx(0);
-            cloud.points[ptIndex].y = gx(1);
-            cloud.points[ptIndex].z = 0.0;
-            colorIndex = serectColor(40, 0, 100, colorMap.size()/3)*3;
-            cloud.points[ptIndex].r = (uint8_t)(colorMap[colorIndex] * 255);
-            cloud.points[ptIndex].g = (uint8_t)(colorMap[colorIndex+1] * 255);
-            cloud.points[ptIndex].b = (uint8_t)(colorMap[colorIndex+2] * 255);
-            ROS_INFO_STREAM(colorIndex);
-            //(int8_t)(gauss_fcn(gx, gmean, gcovariance)*100.0);
-            // if(og.data[og.info.width*row+col] > 100){
-            //     ROS_INFO_STREAM("MAX VALUE " << (int)og.data[og.info.width*row+col]);
-            //     og.data[og.info.width*row+col] = 100;
-            // }    
-        }
-    }
+    // int colorIndex;
+    // int ptIndex;
+    // int value;
+    // double gauss;
+    // int max_value;
+    // int min_value = 0;
+    // gx(0) = 0;
+    // gx(1) = 0;
+    // max_value = (int)(gauss_fcn(gx, gmean, gcovariance)*100.0);
+    // for(int row = 0; row < og.info.height; ++row){
+    //     for(int col = 0; col < og.info.width; ++col){
+    //         gx(0) = (double)(row-(int)(og.info.height/2))*og.info.resolution + og.info.resolution/2;
+    //         gx(1) = (double)(col-(int)(og.info.width/2))*og.info.resolution + og.info.resolution/2;
+    //         ptIndex = row*og.info.height + col;
+    //         cloud.points[ptIndex].x = gx(0);
+    //         cloud.points[ptIndex].y = gx(1);
+    //         cloud.points[ptIndex].z = 0.0;
+    //         value = (int)(gauss_fcn(gx, gmean, gcovariance)*100.0);
+    //         if(max_value < value){
+    //             max_value = value;
+    //         }
+    //         colorIndex = serectColor(value, 0, max_value, colorMap.size()/3)*3;
+    //         cloud.points[ptIndex].r = (uint8_t)(colorMap[colorIndex] * 255);
+    //         cloud.points[ptIndex].g = (uint8_t)(colorMap[colorIndex+1] * 255);
+    //         cloud.points[ptIndex].b = (uint8_t)(colorMap[colorIndex+2] * 255);
+    //     }
+    // }
     
-    pcl::toROSMsg(cloud, cloud_msg);
-    cloud_msg.header.stamp = ros::Time::now();
-    cloud_msg.header.frame_id = "/map";
+    // pcl::toROSMsg(cloud, cloud_msg);
+    // cloud_msg.header.stamp = ros::Time::now();
+    // cloud_msg.header.frame_id = "/map";
     
     ros::Rate loop_rate(20);
     while(ros::ok()){
@@ -156,21 +161,22 @@ void callback(exdata::mapGeneraterConfig &config, uint32_t level){
     double gauss;
     int max_value;
     int min_value = 0;
-    gx(0) = 0;
-    gx(1) = 0;
+    gx(0) = config.mean_x;
+    gx(1) = config.mean_y;
     max_value = (int)(gauss_fcn(gx, gmean, gcovariance)*100.0);
     for(int row = 0; row < og.info.height; ++row){
         for(int col = 0; col < og.info.width; ++col){
             gx(0) = (double)(row-(int)(og.info.height/2))*og.info.resolution + og.info.resolution/2;
             gx(1) = (double)(col-(int)(og.info.width/2))*og.info.resolution + og.info.resolution/2;
             ptIndex = row*og.info.height + col;
-            cloud.points[ptIndex].x = gx(0);
-            cloud.points[ptIndex].y = gx(1);
-            cloud.points[ptIndex].z = 0.0;
-            value = (int)(gauss_fcn(gx, gmean, gcovariance)*100.0);
+            gauss = gauss_fcn(gx, gmean, gcovariance);
+            value = (int)(gauss*100.0);
             if(max_value < value){
                 max_value = value;
             }
+            cloud.points[ptIndex].x = gx(0);
+            cloud.points[ptIndex].y = gx(1);
+            cloud.points[ptIndex].z = gauss;
             colorIndex = serectColor(value, 0, max_value, colorMap.size()/3)*3;
             cloud.points[ptIndex].r = (uint8_t)(colorMap[colorIndex] * 255);
             cloud.points[ptIndex].g = (uint8_t)(colorMap[colorIndex+1] * 255);
