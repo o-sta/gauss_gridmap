@@ -47,13 +47,17 @@ int main (int argc, char** argv)
     cloud.points.resize(og.info.width * og.info.height);
     cloud.width=cloud.points.size();
     cloud.height=1;
+    nh.param("/colorMap/data", colorMap, colorMap);
+    if(!(colorMap.size() > 0)) {
+        ROS_ERROR_STREAM("Cannot load rosparam colorMap/data");
+        return -1;
+    }
+    colorMap.resize(colorMap.size() - (colorMap.size() % 3)); //要素数が3の倍数(RGB)になるようにリサイズ
     // ROS_INFO_STREAM("matrix " << gx(0) << " " << gx(1) << " " << gmean(0) << " " << gmean(1) << " " << gcovariance(0,0) << " " << gcovariance(0,1) << " " << gcovariance(1,0) << " " << gcovariance(1,1) );
     dynamic_reconfigure::Server<exdata::mapGeneraterConfig> server;
     dynamic_reconfigure::Server<exdata::mapGeneraterConfig>::CallbackType fc;
     fc = boost::bind(&callback, _1, _2);
 	server.setCallback(fc);
-    nh.param("colorMap/data", colorMap, colorMap);
-    colorMap.resize(colorMap.size() - (colorMap.size() % 3)); //要素数が3の倍数(RGB)になるようにリサイズ
     
     for(int row = 0; row < og.info.height; ++row){
         for(int col = 0; col < og.info.width; ++col){
@@ -69,16 +73,17 @@ int main (int argc, char** argv)
     int ptIndex;
     for(int row = 0; row < og.info.height; ++row){
         for(int col = 0; col < og.info.width; ++col){
-            gx(0) = (double)(row - og.info.height/2)*og.info.resolution + og.info.resolution/2;
-            gx(1) = (double)(col - og.info.width/2)*og.info.resolution + og.info.resolution/2;
+            gx(0) = (double)(row - (int)(og.info.height/2))*og.info.resolution + og.info.resolution/2;
+            gx(1) = (double)(col - (int)(og.info.width/2))*og.info.resolution + og.info.resolution/2;
             ptIndex = row*og.info.height + col;
             cloud.points[ptIndex].x = gx(0);
             cloud.points[ptIndex].y = gx(1);
             cloud.points[ptIndex].z = 0.0;
-            colorIndex = serectColor(0, 0, 100, colorMap.size()/3)*3;
-            cloud.points[ptIndex].r = colorMap[colorIndex];
-            cloud.points[ptIndex].g = colorMap[colorIndex+1];
-            cloud.points[ptIndex].b = colorMap[colorIndex+2];
+            colorIndex = serectColor(40, 0, 100, colorMap.size()/3)*3;
+            cloud.points[ptIndex].r = (uint8_t)(colorMap[colorIndex] * 255);
+            cloud.points[ptIndex].g = (uint8_t)(colorMap[colorIndex+1] * 255);
+            cloud.points[ptIndex].b = (uint8_t)(colorMap[colorIndex+2] * 255);
+            ROS_INFO_STREAM(colorIndex);
             //(int8_t)(gauss_fcn(gx, gmean, gcovariance)*100.0);
             // if(og.data[og.info.width*row+col] > 100){
             //     ROS_INFO_STREAM("MAX VALUE " << (int)og.data[og.info.width*row+col]);
@@ -88,6 +93,8 @@ int main (int argc, char** argv)
     }
     
     pcl::toROSMsg(cloud, cloud_msg);
+    cloud_msg.header.stamp = ros::Time::now();
+    cloud_msg.header.frame_id = "/map";
     
     ros::Rate loop_rate(20);
     while(ros::ok()){
@@ -104,7 +111,7 @@ double gauss_fcn(const Eigen::VectorXd& x, const Eigen::VectorXd& mean, const Ei
     double result, index, scalar, matrix_scalar, matrix_double;
     Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(1,1);
     index = (double)(x.rows());
-    scalar = 1.0 / (std::pow(std::sqrt(2.0*PI), index) * covariance.determinant());
+    scalar = 1.0 / (std::pow(std::sqrt(2.0*PI), index) * std::sqrt(covariance.determinant()));
     matrix = (x-mean).transpose()*covariance.inverse()*(x-mean);
     matrix_scalar = matrix(0,0);
     matrix_double = std::exp( -1.0 / 2.0*matrix_scalar);
@@ -145,32 +152,46 @@ void callback(exdata::mapGeneraterConfig &config, uint32_t level){
     //pointcloudでやる場合
     int colorIndex;
     int ptIndex;
+    int value;
+    double gauss;
+    int max_value;
+    int min_value = 0;
+    gx(0) = 0;
+    gx(1) = 0;
+    max_value = (int)(gauss_fcn(gx, gmean, gcovariance)*100.0);
     for(int row = 0; row < og.info.height; ++row){
         for(int col = 0; col < og.info.width; ++col){
-            gx(0) = (double)(row - og.info.height/2)*og.info.resolution + og.info.resolution/2;
-            gx(1) = (double)(col - og.info.width/2)*og.info.resolution + og.info.resolution/2;
+            gx(0) = (double)(row-(int)(og.info.height/2))*og.info.resolution + og.info.resolution/2;
+            gx(1) = (double)(col-(int)(og.info.width/2))*og.info.resolution + og.info.resolution/2;
             ptIndex = row*og.info.height + col;
             cloud.points[ptIndex].x = gx(0);
             cloud.points[ptIndex].y = gx(1);
             cloud.points[ptIndex].z = 0.0;
-            colorIndex = serectColor(config.value, 0, 100, colorMap.size()/3)*3;
-            cloud.points[ptIndex].r = colorMap[colorIndex];
-            cloud.points[ptIndex].g = colorMap[colorIndex+1];
-            cloud.points[ptIndex].b = colorMap[colorIndex+2];
-            //(int8_t)(gauss_fcn(gx, gmean, gcovariance)*100.0);
-            // if(og.data[og.info.width*row+col] > 100){
-            //     ROS_INFO_STREAM("MAX VALUE " << (int)og.data[og.info.width*row+col]);
-            //     og.data[og.info.width*row+col] = 100;
-            // }    
+            value = (int)(gauss_fcn(gx, gmean, gcovariance)*100.0);
+            if(max_value < value){
+                max_value = value;
+            }
+            colorIndex = serectColor(value, 0, max_value, colorMap.size()/3)*3;
+            cloud.points[ptIndex].r = (uint8_t)(colorMap[colorIndex] * 255);
+            cloud.points[ptIndex].g = (uint8_t)(colorMap[colorIndex+1] * 255);
+            cloud.points[ptIndex].b = (uint8_t)(colorMap[colorIndex+2] * 255);
         }
     }
+
     
     pcl::toROSMsg(cloud, cloud_msg);
+    cloud_msg.header.stamp = ros::Time::now();
+    cloud_msg.header.frame_id = "/map";
 }
 
 
 
 int serectColor(float value, float minValue, float maxValue, int palletSize){
+    if(value <= minValue){
+        return 0;
+    }else if(maxValue <= value){
+        return palletSize-1;
+    }
     float range = (maxValue - minValue)/palletSize;
     return (int)((value - minValue)/range);
 }
