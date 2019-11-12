@@ -136,6 +136,7 @@ target_link_libraries(exdata_voxel ${catkin_LIBRARIES})
 add_executable(mapgen src/mapGenerater.cpp)
 add_dependencies(mapgen ${PROJECT_NAME}_gencfg)
 target_link_libraries(mapgen ${catkin_LIBRARIES})
+target_link_libraries(tf ${catkin_LIBRARIES})
 
 
 ## Declare a C++ library

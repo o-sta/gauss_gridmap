@@ -21,7 +21,6 @@ std::vector<float> colorMap;
 pcl::PointCloud<pcl::PointXYZRGB> cloud;
 sensor_msgs::PointCloud2 cloud_msg;
 
-
 int main (int argc, char** argv)
 {
     ros::init (argc, argv, "mapGenerater");
@@ -47,7 +46,7 @@ int main (int argc, char** argv)
     cloud.points.resize(og.info.width * og.info.height);
     cloud.width=cloud.points.size();
     cloud.height=1;
-    nh.param("/colorMap/data", colorMap, colorMap);
+    nh.param("colorMap/data", colorMap, colorMap);
     if(!(colorMap.size() > 0)) {
         ROS_ERROR_STREAM("Cannot load rosparam colorMap/data");
         return -1;
@@ -108,7 +107,7 @@ int main (int argc, char** argv)
         ros::spinOnce();
         loop_rate.sleep();
     }
-    ros::spin ();
+    ros::spin();
 }
 
 double gauss_fcn(const Eigen::VectorXd& x, const Eigen::VectorXd& mean, const Eigen::MatrixXd& covariance){
@@ -168,7 +167,7 @@ void callback(exdata::mapGeneraterConfig &config, uint32_t level){
         for(int col = 0; col < og.info.width; ++col){
             gx(0) = (double)(row-(int)(og.info.height/2))*og.info.resolution + og.info.resolution/2;
             gx(1) = (double)(col-(int)(og.info.width/2))*og.info.resolution + og.info.resolution/2;
-            ptIndex = row*og.info.height + col;
+            ptIndex = row*og.info.width + col;
             gauss = gauss_fcn(gx, gmean, gcovariance);
             value = (int)(gauss*100.0);
             if(max_value < value){
